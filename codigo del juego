@@ -1,0 +1,148 @@
+import pygame
+import random
+import sys
+
+# Inicialización de pygame
+pygame.init()
+
+# Definir el tamaño de la ventana y los colores
+SCREEN_WIDTH = 400
+SCREEN_HEIGHT = 400
+BACKGROUND_COLOR = (30, 30, 40)  # Gris oscuro
+TEXT_COLOR = (255, 255, 255)  # Blanco
+GRID_COLOR = (70, 70, 90)  # Gris frío
+BUTTON_COLOR = (100, 100, 120)  # Gris claro
+HIGHLIGHT_COLOR = (180, 180, 220)  # Azul frío
+
+# Tamaño de las celdas
+CELL_SIZE = 80
+GRID_SIZE = 4  # 4x4
+
+# Crear la pantalla
+screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
+pygame.display.set_caption('Rompecabezas de Números')
+
+# Fuente para el texto
+font = pygame.font.Font(None, 40)
+
+# Generar el tablero
+def generate_puzzle():
+    numbers = list(range(1, GRID_SIZE * GRID_SIZE))  # Números del 1 al 15
+    numbers.append(0)  # Espacio vacío
+    random.shuffle(numbers)
+    return [numbers[i:i + GRID_SIZE] for i in range(0, len(numbers), GRID_SIZE)]
+
+# Verificar si el tablero está resuelto
+def is_solved(board):
+    correct = list(range(1, GRID_SIZE * GRID_SIZE)) + [0]
+    return board == [correct[i:i + GRID_SIZE] for i in range(0, len(correct), GRID_SIZE)]
+
+# Dibujar el tablero
+def draw_board(board, wrong_attempts):
+    screen.fill(BACKGROUND_COLOR)
+    
+    for row in range(GRID_SIZE):
+        for col in range(GRID_SIZE):
+            number = board[row][col]
+            rect = pygame.Rect(col * CELL_SIZE, row * CELL_SIZE, CELL_SIZE, CELL_SIZE)
+            pygame.draw.rect(screen, GRID_COLOR, rect)
+            if number != 0:
+                text = font.render(str(number), True, TEXT_COLOR)
+                text_rect = text.get_rect(center=rect.center)
+                screen.blit(text, text_rect)
+    
+    # Mensaje de errores
+    if wrong_attempts > 0:
+        error_text = font.render(f'Errores: {wrong_attempts}', True, TEXT_COLOR)
+        screen.blit(error_text, (10, SCREEN_HEIGHT - 40))
+    
+    pygame.display.flip()
+
+# Mover una celda
+def valid_move(board, empty_pos, move_pos):
+    x1, y1 = empty_pos
+    x2, y2 = move_pos
+    if abs(x1 - x2) + abs(y1 - y2) == 1:  # Mover una celda adyacente
+        board[x1][y1], board[x2][y2] = board[x2][y2], board[x1][y1]
+        return True
+    return False
+
+# Crear un botón
+def draw_button(text, x, y, width, height):
+    button_rect = pygame.Rect(x, y, width, height)
+    pygame.draw.rect(screen, BUTTON_COLOR, button_rect)
+    text_surface = font.render(text, True, TEXT_COLOR)
+    text_rect = text_surface.get_rect(center=button_rect.center)
+    screen.blit(text_surface, text_rect)
+    return button_rect
+
+# Iniciar el juego
+def main():
+    board = generate_puzzle()
+    empty_pos = [(r, c) for r in range(GRID_SIZE) for c in range(GRID_SIZE) if board[r][c] == 0][0]
+    wrong_attempts = 0
+    clock = pygame.time.Clock()
+    
+    while True:
+        draw_board(board, wrong_attempts)
+        
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                pygame.quit()
+                sys.exit()
+            if event.type == pygame.MOUSEBUTTONDOWN:
+                if wrong_attempts >= 5:
+                    continue
+                
+                x, y = event.pos
+                col, row = x // CELL_SIZE, y // CELL_SIZE
+                
+                if board[row][col] != 0:
+                    move_pos = empty_pos
+                    if valid_move(board, move_pos, (row, col)):
+                        empty_pos = (row, col)
+                    else:
+                        wrong_attempts += 1
+
+        # Verificar si el juego está resuelto
+        if is_solved(board):
+            game_over_text = font.render("¡Felicidades! Has ganado", True, TEXT_COLOR)
+            screen.blit(game_over_text, (SCREEN_WIDTH // 4, SCREEN_HEIGHT // 2))
+            draw_button("Reiniciar", 150, 320, 100, 40)
+            
+            pygame.display.flip()
+
+            waiting = True
+            while waiting:
+                for event in pygame.event.get():
+                    if event.type == pygame.QUIT:
+                        pygame.quit()
+                        sys.exit()
+                    if event.type == pygame.MOUSEBUTTONDOWN:
+                        if draw_button("Reiniciar", 150, 320, 100, 40).collidepoint(event.pos):
+                            main()
+                            waiting = False
+
+        elif wrong_attempts >= 5:
+            game_over_text = font.render("Te has equivocado más de 5 veces, vuelve a intentarlo", True, TEXT_COLOR)
+            screen.blit(game_over_text, (50, SCREEN_HEIGHT // 2))
+            draw_button("Reiniciar", 150, 320, 100, 40)
+            
+            pygame.display.flip()
+
+            waiting = True
+            while waiting:
+                for event in pygame.event.get():
+                    if event.type == pygame.QUIT:
+                        pygame.quit()
+                        sys.exit()
+                    if event.type == pygame.MOUSEBUTTONDOWN:
+                        if draw_button("Reiniciar", 150, 320, 100, 40).collidepoint(event.pos):
+                            main()
+                            waiting = False
+        
+        clock.tick(30)
+
+# Ejecutar el juego
+if __name__ == "__main__":
+    main()
